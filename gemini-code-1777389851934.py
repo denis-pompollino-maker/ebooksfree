@@ -4,78 +4,71 @@ import plotly.graph_objects as go
 import plotly.express as px
 import calendar
 from datetime import datetime, timedelta
+import numpy as np
 
 # 1. CONFIGURAÇÃO DA PÁGINA
-st.set_page_config(layout="wide", page_title="Industrial Analytics Hub", page_icon="📈")
+st.set_page_config(layout="wide", page_title="Industrial Analytics Hub", page_icon="⚙️")
 
-# --- ESTILIZAÇÃO CSS CORPORATIVA (PREMIUM LIGHT MODE) ---
+# --- ESTILIZAÇÃO CSS CORPORATIVA ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
     * { font-family: 'Inter', sans-serif; }
     
-    /* Fundo da Aplicação Global */
+    /* Fundo da Aplicação */
     .stApp { background-color: #f8fafc; color: #0f172a; }
     
-    /* Remover padding superior excessivo do Streamlit */
-    .block-container { padding-top: 2rem !important; }
-
-    /* Menu Lateral Refinado */
-    [data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e2e8f0; box-shadow: 2px 0 10px rgba(0,0,0,0.02); }
+    /* Menu Lateral */
+    [data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e2e8f0; }
     [data-testid="stSidebar"] .stRadio div[role="radiogroup"] > label {
         background-color: #ffffff; border: 1px solid transparent;
         padding: 10px 15px !important; border-radius: 8px !important;
-        margin-bottom: 8px !important; color: #475569 !important; font-weight: 500; transition: all 0.2s ease;
-    }
-    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] > label:hover {
-        background-color: #f1f5f9; border: 1px solid #e2e8f0;
+        margin-bottom: 5px !important; color: #475569 !important; font-weight: 600; cursor: pointer;
     }
     [data-testid="stSidebar"] .stRadio div[role="radiogroup"] > label[data-checked="true"] {
         background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
-        color: white !important; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(29, 78, 216, 0.2);
+        color: white !important; box-shadow: 0 4px 6px -1px rgba(29, 78, 216, 0.2);
     }
 
-    /* Cards de Métricas Estilo Neumorphism Soft */
-    .metric-container { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 20px; }
+    /* Cards de Métricas */
+    .metric-container { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
     .metric-card {
-        background: #ffffff; padding: 20px; border-radius: 12px;
-        text-align: center; border: 1px solid #f1f5f9;
-        flex: 1; display: flex; flex-direction: column; justify-content: center;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: #ffffff; padding: 15px; border-radius: 10px;
+        text-align: center; border: 1px solid #e2e8f0;
+        flex: 1; min-height: 80px; display: flex; flex-direction: column; justify-content: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
-    .metric-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08); }
-    .metric-title { color: #64748b; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-    .metric-value { color: #0f172a; font-size: 1.8rem; font-weight: 900; line-height: 1.2; }
-    
-    /* Classes de GAP Refinadas */
-    .gap-box { background: #f8fafc; border-radius: 6px; padding: 8px; margin-top: 10px; border: 1px solid #e2e8f0; }
-    .gap-negative { color: #e11d48; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px; }
-    .gap-positive { color: #059669; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .metric-title { color: #64748b; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; }
+    .metric-value { color: #0f172a; font-size: 1.5rem; font-weight: 900; line-height: 1.1; }
+
+    /* Estilo de Gaps */
+    .gap-text { font-size: 0.75rem; font-weight: 700; margin-top: 5px; }
+    .color-red { color: #e11d48; }
+    .color-green { color: #059669; }
+
+    /* Headers de Seção */
+    .section-header {
+        background: #f1f5f9; padding: 10px 15px; border-radius: 6px;
+        color: #1e40af; font-weight: 900; text-transform: uppercase;
+        margin-top: 25px; margin-bottom: 15px; border-left: 5px solid #1d4ed8; font-size: 1rem;
+    }
 
     /* Calendário */
-    .calendar-day-name { text-align: center; font-weight: 700; color: #475569; font-size: 0.85rem; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0; margin-bottom: 10px;}
-    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; width: 100%; }
-    .day-card { background: #ffffff; border-radius: 8px; padding: 12px; min-height: 95px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .day-number { font-size: 1.1rem; font-weight: 900; color: #1e293b; }
-    .day-status { font-size: 0.8rem; font-weight: 700; margin-top: 5px; text-align: right; }
+    .calendar-day-name { text-align: center; font-weight: 800; color: #475569; font-size: 0.85rem; padding-bottom: 5px; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; width: 100%; }
+    .day-card { background: #ffffff; border-radius: 6px; padding: 10px; min-height: 85px; border: 1px solid #e2e8f0; }
+    .day-number { font-size: 1rem; font-weight: 900; color: #1e293b; }
+    .day-status { font-size: 0.75rem; font-weight: 700; margin-top: 5px; text-align: right; }
 
-    /* Headers de Seção Estilo Profissional */
-    .section-header {
-        display: flex; align-items: center; gap: 10px;
-        color: #1e293b; font-weight: 800; font-size: 1.2rem;
-        margin-top: 30px; margin-bottom: 15px; padding-bottom: 8px;
-        border-bottom: 2px solid #e2e8f0;
-    }
-    .section-header::before { content: ''; display: block; width: 6px; height: 20px; background: #1d4ed8; border-radius: 3px; }
-
-    /* 5 Porquês e Caixas de Texto */
-    .five-why-box { border: 1px solid #cbd5e1; padding: 25px; background: #ffffff; border-radius: 12px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-    .five-why-line { border-bottom: 1px dashed #cbd5e1; padding: 12px 0; font-size: 0.95rem; color: #334155; }
+    /* 5 Porquês */
+    .five-why-box { border: 2px solid #cbd5e1; padding: 20px; background: #ffffff; border-radius: 10px; margin-top: 15px; }
+    .five-why-line { border-bottom: 1px dashed #cbd5e1; padding: 10px 0; font-size: 0.9rem; color: #000; }
+    
+    h1, h2, h3, p, span, label { color: #000000 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. CARREGAMENTO E LIMPEZA
+# 2. CARREGAMENTO E LIMPEZA (Intacto ao original)
 @st.cache_data
 def load_data(file_obj):
     df_order = pd.read_excel(file_obj, sheet_name="Result by order")
@@ -111,8 +104,8 @@ def load_metas_completas(file, data_ref):
         target = next((s for s in xls.sheet_names if "PEÇAS" in s.upper()), None)
         df_raw = pd.read_excel(file, sheet_name=target, header=None)
         
-        row_dates = df_raw.iloc[2, :].tolist() 
-        row_meta_geral = df_raw.iloc[124, :].tolist() 
+        row_dates = df_raw.iloc[2, :].tolist()
+        row_meta_geral = df_raw.iloc[124, :].tolist()
         
         meta_geral_mes = 0
         meta_ate_hoje = 0
@@ -124,55 +117,45 @@ def load_metas_completas(file, data_ref):
         for col_idx, d_val in enumerate(row_dates):
             if isinstance(d_val, (datetime, pd.Timestamp)):
                 if d_val.month == data_ref.month and d_val.year == data_ref.year:
-                    valor_geral = pd.to_numeric(row_meta_geral[col_idx], errors='coerce') or 0
-                    meta_geral_mes += valor_geral
-                    if d_val.date() <= data_ref:
-                        meta_ate_hoje += valor_geral
+                    valor_geral = pd.to_numeric(row_meta_geral[col_idx], errors='coerce')
+                    if pd.notna(valor_geral):
+                        meta_geral_mes += valor_geral
+                        if d_val.date() <= data_ref:
+                            meta_ate_hoje += valor_geral
+                
                 if d_val.date() == data_ref:
                     col_idx_hoje = col_idx
 
         if col_idx_hoje is not None:
             for maq, row_idx in mapping_maquinas.items():
-                val_maq = pd.to_numeric(df_raw.iloc[row_idx, col_idx_hoje], errors='coerce') or 0
-                metas_maq_hoje[maq] = val_maq
+                val_maq = pd.to_numeric(df_raw.iloc[row_idx, col_idx_hoje], errors='coerce')
+                metas_maq_hoje[maq] = val_maq if pd.notna(val_maq) else 0
                 
         return meta_geral_mes, meta_ate_hoje, metas_maq_hoje
     except Exception as e:
         return 0, 0, {}
 
-# Gráfico de Velocímetro Profissional
+# Gráfico de Gauge (Corrigido para fundo branco)
 def mini_gauge(label, value, color, target, height=180):
     fig = go.Figure(go.Indicator(
         mode="gauge+number", value=value,
-        number={'suffix': "%", 'font': {'size': 24, 'color': '#0f172a', 'family': 'Inter', 'weight': 'bold'}},
-        title={'text': label, 'font': {'size': 14, 'color': '#64748b', 'family': 'Inter'}},
+        number={'suffix': "%", 'font': {'size': 20, 'color': '#0f172a'}},
+        title={'text': label, 'font': {'size': 14, 'color': '#64748b'}},
         gauge={
-            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#cbd5e1"},
-            'bar': {'color': color, 'thickness': 0.75},
-            'bgcolor': "#f1f5f9",
-            'borderwidth': 0,
-            'threshold': {'line': {'color': "#0f172a", 'width': 3}, 'thickness': 0.75, 'value': target}
+            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "black"},
+            'bar': {'color': color},
+            'bgcolor': "#e2e8f0",
+            'threshold': {'line': {'color': "#000000", 'width': 3}, 'value': target}
         }
     ))
-    fig.update_layout(height=height, margin=dict(l=10, r=10, t=40, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'family': 'Inter'})
-    return fig
-
-# Tema padrão para gráficos Plotly
-def apply_corporate_layout(fig):
-    fig.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(family='Inter', color='#334155'),
-        xaxis=dict(showgrid=True, gridcolor='#e2e8f0', zeroline=False),
-        yaxis=dict(showgrid=True, gridcolor='#e2e8f0', zeroline=False),
-        margin=dict(l=0, r=0, t=30, b=0)
-    )
+    fig.update_layout(height=height, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)')
     return fig
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.markdown("<h2 style='color:#1d4ed8; font-weight:900;'>🏭 ANALYTICS HUB</h2>", unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("📂 Base de Produção (.xlsm)", type=["xlsm"])
-    up_datas = st.file_uploader("📂 Base de Metas (.xlsx)", type=["xlsx"])
+    st.markdown("<h1 style='color:#1d4ed8; font-weight:900;'>🏭 ANALYTICS HUB</h1>", unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("📂 Excel Produção (.xlsm)", type=["xlsm"])
+    up_datas = st.file_uploader("📂 Excel DATAS (.xlsx)", type=["xlsx"])
     st.markdown("---")
     if uploaded_file:
         menu = st.radio("NAVEGAÇÃO", ["📋 REPORTE DIÁRIO", "📈 PERFORMANCE", "🛑 TOP 10 PARADAS", "📅 CALENDÁRIO", "📋 ANÁLISE SEMANAL"])
@@ -181,18 +164,18 @@ if uploaded_file:
     df_order, df_stops = load_data(uploaded_file)
 
     # =========================================================
-    # ABA 1: REPORTE DIÁRIO
+    # ABA 1: REPORTE DIÁRIO (Com Gap exato de Peças Faltantes)
     # =========================================================
     if menu == "📋 REPORTE DIÁRIO":
-        st.markdown("<div class='section-header'>Filtros Rápidos</div>", unsafe_allow_html=True)
+        st.subheader("⚙️ Filtros da Página")
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             data_ref_reporte = st.date_input("Data de Referência", df_order['Data'].max().date())
         with col_f2:
             datas_disp = sorted(df_order['Data'].dt.date.unique().tolist(), reverse=True)
-            dias_sel = st.multiselect("Comparar com (Tabelas):", datas_disp, default=[data_ref_reporte])
+            dias_sel = st.multiselect("Filtrar histórico (Tabelas):", datas_disp, default=datas_disp[:3] if len(datas_disp) >= 3 else datas_disp)
 
-        st.markdown(f"<h1 style='color:#0f172a; margin-top:20px; font-weight:900;'>Reporte Executivo: {data_ref_reporte.strftime('%d/%m/%Y')}</h1>", unsafe_allow_html=True)
+        st.markdown(f"## 📋 Reporte Diário de Produção - {data_ref_reporte.strftime('%d/%m/%Y')}")
 
         df_acumulado_mes = df_order[(df_order['Data'].dt.month == data_ref_reporte.month) & (df_order['Data'].dt.year == data_ref_reporte.year) & (df_order['Data'].dt.date <= data_ref_reporte)]
         estoque_acum_mes = df_acumulado_mes['Peças Estoque - Ajuste'].sum()
@@ -201,219 +184,208 @@ if uploaded_file:
         loss_acum_mes = ((total_mc_mes - estoque_acum_mes) / total_mc_mes * 100) if total_mc_mes > 0 else 0
         
         meta_mov, meta_loss = 90.0, 2.5
-        gap_mov, gap_loss = mov_acum_mes - meta_mov, loss_acum_mes - meta_loss
+        gap_mov = mov_acum_mes - meta_mov
+        gap_loss = loss_acum_mes - meta_loss
+        
         meta_geral_mes, meta_dinamica_hoje, metas_maq_hoje = load_metas_completas(up_datas, data_ref_reporte) if up_datas else (0, 0, {})
 
-        # Visão Geral do Mês
         st.markdown(f"""
             <div class="metric-container">
                 <div class="metric-card">
-                    <div class="metric-title">Movimentação Mês</div>
-                    <div class="metric-value" style="color:{'#059669' if mov_acum_mes>=meta_mov else '#e11d48'}">{mov_acum_mes:.1f}%</div>
-                    <div class="gap-box">Meta 90% | {'✅' if gap_mov>=0 else '🚨'} {gap_mov:+.1f}%</div>
+                    <div class="metric-title">Movimentação Mês (Meta 90%)</div>
+                    <div class="metric-value">{mov_acum_mes:.1f}%</div>
+                    <div class="gap-text {'color-green' if gap_mov>=0 else 'color-red'}">{gap_mov:+.1f}% vs meta</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-title">Perda (Loss) Mês</div>
-                    <div class="metric-value" style="color:{'#059669' if loss_acum_mes<=meta_loss else '#e11d48'}">{loss_acum_mes:.1f}%</div>
-                    <div class="gap-box">Meta 2.5% | {'✅' if gap_loss<=0 else '🚨'} {gap_loss:+.1f}%</div>
+                    <div class="metric-title">Loss Mês (Meta 2,5%)</div>
+                    <div class="metric-value color-red">{loss_acum_mes:.1f}%</div>
+                    <div class="gap-text {'color-green' if gap_loss<=0 else 'color-red'}">{gap_loss:+.1f}% vs meta</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-title">Estoque Realizado (Mês)</div>
-                    <div class="metric-value" style="color:#1d4ed8">{estoque_acum_mes:,.0f} <span style="font-size:1rem; color:#64748b">pçs</span></div>
-                    <div class="gap-box">Meta Dinâmica Hoje: {meta_dinamica_hoje:,.0f}</div>
+                    <div class="metric-title">Estoque Realizado Mês</div>
+                    <div class="metric-value">{estoque_acum_mes:,.0f}</div>
                 </div>
+            </div>
+            <div class="metric-container">
+                <div class="metric-card"><div class="metric-title">Meta Acumulada (Até {data_ref_reporte.strftime('%d/%m')})</div><div class="metric-value" style="color:#1d4ed8">{meta_dinamica_hoje:,.0f}</div></div>
+                <div class="metric-card"><div class="metric-title">Meta Geral do Mês (Datas)</div><div class="metric-value" style="color:#059669">{meta_geral_mes:,.0f}</div></div>
             </div>
         """, unsafe_allow_html=True)
 
-        # Análise de Gap Diário
+        # Análise Exata de GAP Faltante (Tabela)
         if up_datas:
-            st.markdown(f"<div class='section-header'>Acompanhamento de Metas por Máquina (Gap)</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='section-header'>🎯 ANÁLISE DE PEÇAS FALTANTES (GAP) - {data_ref_reporte.strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
             df_dia_gap = df_order[df_order['Data'].dt.date == data_ref_reporte]
             res_gap = df_dia_gap.groupby('Máquina').agg({'Peças Estoque - Ajuste':'sum'}).reset_index()
-            maquinas_alvo = ["1", "2", "3", "4", "5", "6", "7"]
             
-            cols_gap = st.columns(len(maquinas_alvo))
-            for i, maq in enumerate(maquinas_alvo):
+            gap_data = []
+            maquinas_alvo = ["1", "2", "3", "4", "5", "6", "7"]
+            for maq in maquinas_alvo:
                 realizado = res_gap.loc[res_gap['Máquina'] == maq, 'Peças Estoque - Ajuste'].sum() if maq in res_gap['Máquina'].values else 0
                 meta_maq = metas_maq_hoje.get(maq, 0)
-                gap = realizado - meta_maq
-                
-                color_class = "gap-positive" if gap >= 0 else "gap-negative"
-                icon = "🔥" if gap >= 0 else "🔻"
-                
-                with cols_gap[i]:
-                    st.markdown(f"""
-                        <div class="metric-card" style="padding: 15px 10px;">
-                            <div class="metric-title" style="color:#1e40af;">MÁQUINA {maq}</div>
-                            <div class="metric-value" style="font-size:1.4rem;">{realizado:,.0f}</div>
-                            <div style="font-size:0.75rem; color:#64748b; font-weight:600; margin-top:5px;">Meta: {meta_maq:,.0f}</div>
-                            <div class="{color_class}" style="margin-top:8px;">{icon} {gap:,.0f}</div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                faltante = meta_maq - realizado # Cálculo exato de "Quanto falta bater a meta"
+                status = "✅ Bateu Meta" if faltante <= 0 else f"🚨 Faltam {faltante:,.0f} peças"
+                gap_data.append({"Máquina": f"MQ{maq}", "Meta": meta_maq, "Realizado": realizado, "Status (Faltante)": status})
+            
+            # Mostrando a tabela crua e direta para não perder nenhum dado
+            df_gap_view = pd.DataFrame(gap_data)
+            st.table(df_gap_view)
         else:
-            st.warning("Carregue o arquivo de DATAS (Metas) para visualizar o acompanhamento de Gap por Máquina.")
+            st.warning("⚠️ Carregue o arquivo Excel DATAS na barra lateral para calcular as peças faltantes por máquina.")
 
-        # Detalhamento Histórico
+        # Detalhamento Original (Tabela do seu código intacta)
         for dia in dias_sel:
-            st.markdown(f"<div class='section-header'>Resultados Operacionais - {dia.strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='section-header'>DETALHAMENTO POR MÁQUINA - {dia.strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
             df_dia = df_order[df_order['Data'].dt.date == dia]
             res = df_dia.groupby(['Categoria', 'Máquina']).agg({'Run Time':'sum','Horário Padrão':'sum','Machine Counter':'sum','Peças Estoque - Ajuste':'sum'}).reset_index()
             res['Movimentação %'] = (res['Run Time'] / res['Horário Padrão'].replace(0,1) * 100).round(1)
             res['Perda %'] = ((res['Machine Counter'] - res['Peças Estoque - Ajuste']) / res['Machine Counter'].replace(0,1) * 100).round(1)
-            st.dataframe(res[['Categoria','Máquina','Movimentação %','Perda %','Peças Estoque - Ajuste']].rename(columns={'Peças Estoque - Ajuste':'Estoque (pçs)'}), use_container_width=True, hide_index=True)
+            st.table(res[['Categoria','Máquina','Movimentação %','Perda %','Peças Estoque - Ajuste']].rename(columns={'Peças Estoque - Ajuste':'Qtd Estoque'}))
 
     # =========================================================
-    # ABA 2: PERFORMANCE
+    # ABA 2: PERFORMANCE (Intacta)
     # =========================================================
     elif menu == "📈 PERFORMANCE":
-        st.sidebar.subheader("Filtros do Dashboard")
-        f_data = st.sidebar.date_input("Período Analisado", [df_order['Data'].min(), df_order['Data'].max()], key='p1')
-        f_maq = st.sidebar.multiselect("Selecionar Máquinas", sorted(df_order['Máquina'].unique()), default=sorted(df_order['Máquina'].unique()))
-        df_f = df_order[(df_order['Data'].dt.date >= f_data[0]) & (df_order['Data'].dt.date <= f_data[1]) & (df_order['Máquina'].isin(f_maq))]
+        st.sidebar.subheader("Filtros")
+        f_data = st.sidebar.date_input("Período", [df_order['Data'].min(), df_order['Data'].max()], key='p1')
+        f_maq = st.sidebar.multiselect("Máquinas", sorted(df_order['Máquina'].unique()), default=sorted(df_order['Máquina'].unique()), key='m1')
+        f_turno = st.sidebar.multiselect("Turnos", sorted(df_order['Turno'].unique()), default=sorted(df_order['Turno'].unique()), key='t1')
+        df_f = df_order[(df_order['Data'].dt.date >= f_data[0]) & (df_order['Data'].dt.date <= f_data[1]) & (df_order['Máquina'].isin(f_maq)) & (df_order['Turno'].isin(f_turno))]
         
-        st.markdown("<div class='section-header'>Visão Geral de Performance</div>", unsafe_allow_html=True)
         st.markdown(f"""
             <div class="metric-container">
-                <div class="metric-card"><div class="metric-title">Machine Counter Real</div><div class="metric-value">{df_f["Machine Counter"].sum():,.0f}</div></div>
-                <div class="metric-card"><div class="metric-title">Peças para Estoque</div><div class="metric-value" style="color:#1d4ed8;">{df_f["Peças Estoque - Ajuste"].sum():,.0f}</div></div>
-                <div class="metric-card"><div class="metric-title">Run Time Total (min)</div><div class="metric-value">{df_f["Run Time"].sum():,.0f}</div></div>
+                <div class="metric-card"><div class="metric-title">Machine Counter</div><div class="metric-value">{df_f["Machine Counter"].sum():,.0f}</div></div>
+                <div class="metric-card"><div class="metric-title">Peças Estoque</div><div class="metric-value" style="color:#1d4ed8;">{df_f["Peças Estoque - Ajuste"].sum():,.0f}</div></div>
+                <div class="metric-card"><div class="metric-title">Run Time Total</div><div class="metric-value">{df_f["Run Time"].sum():,.0f}m</div></div>
             </div>
         """, unsafe_allow_html=True)
 
         col1, col2 = st.columns(2)
         hp_sum = df_f['Horário Padrão'].sum()
-        with col1: 
-            fig1 = mini_gauge("Movimentação Total (%)", (df_f['Run Time'].sum()/hp_sum*100 if hp_sum>0 else 0), "#059669", 90)
-            st.plotly_chart(fig1, use_container_width=True)
-        with col2: 
-            fig2 = mini_gauge("Loss Total (%)", ((df_f['Machine Counter'].sum()-df_f['Peças Estoque - Ajuste'].sum())/df_f['Machine Counter'].sum()*100 if df_f['Machine Counter'].sum()>0 else 0), "#e11d48", 2.5)
-            st.plotly_chart(fig2, use_container_width=True)
+        with col1: st.plotly_chart(mini_gauge("Movimentação (%)", (df_f['Run Time'].sum()/hp_sum*100 if hp_sum>0 else 0), "#059669", 90), use_container_width=True)
+        with col2: st.plotly_chart(mini_gauge("Loss (%)", ((df_f['Machine Counter'].sum()-df_f['Peças Estoque - Ajuste'].sum())/df_f['Machine Counter'].sum()*100 if df_f['Machine Counter'].sum()>0 else 0), "#e11d48", 2.5), use_container_width=True)
 
     # =========================================================
-    # ABA 3: TOP 10 PARADAS
+    # ABA 3: TOP 10 PARADAS (Intacta, cores ajustadas)
     # =========================================================
     elif menu == "🛑 TOP 10 PARADAS":
-        f_d_s = st.sidebar.date_input("Período das Paradas", [df_stops['Data'].min(), df_stops['Data'].max()], key='p2')
+        f_d_s = st.sidebar.date_input("Período", [df_stops['Data'].min(), df_stops['Data'].max()], key='p2')
         df_s_f = df_stops[(df_stops['Data'].dt.date >= f_d_s[0]) & (df_stops['Data'].dt.date <= f_d_s[1])]
         
-        st.markdown("<div class='section-header'>Pareto de Paradas Industriais</div>", unsafe_allow_html=True)
-        
-        col_g1, col_g2 = st.columns(2)
-        with col_g1:
-            st.markdown("<h4 style='color:#334155; text-align:center;'>Top 10: Impacto em Minutos</h4>", unsafe_allow_html=True)
-            df_plot1 = df_s_f.groupby('Problema')['Minutos'].sum().sort_values().tail(10).reset_index()
-            fig1 = px.bar(df_plot1, x='Minutos', y='Problema', orientation='h', text='Minutos', color_discrete_sequence=['#e11d48'])
-            fig1.update_traces(textposition='outside', marker_border_radius=4)
-            st.plotly_chart(apply_corporate_layout(fig1), use_container_width=True)
+        fig1 = px.bar(df_s_f.groupby('Problema')['Minutos'].sum().sort_values().tail(10), orientation='h', title="Minutos Totais", color_discrete_sequence=['#e11d48'])
+        fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font={'color':'black'})
+        st.plotly_chart(fig1, use_container_width=True)
 
-        with col_g2:
-            st.markdown("<h4 style='color:#334155; text-align:center;'>Top 10: Frequência (Nº Ocorrências)</h4>", unsafe_allow_html=True)
-            df_plot2 = df_s_f.groupby('Problema')['QTD'].sum().sort_values().tail(10).reset_index()
-            fig2 = px.bar(df_plot2, x='QTD', y='Problema', orientation='h', text='QTD', color_discrete_sequence=['#1d4ed8'])
-            fig2.update_traces(textposition='outside', marker_border_radius=4)
-            st.plotly_chart(apply_corporate_layout(fig2), use_container_width=True)
+        fig2 = px.bar(df_s_f.groupby('Problema')['QTD'].sum().sort_values().tail(10), orientation='h', title="Frequência (Qtd)", color_discrete_sequence=['#1d4ed8'])
+        fig2.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font={'color':'black'})
+        st.plotly_chart(fig2, use_container_width=True)
 
     # =========================================================
-    # ABA 4: CALENDÁRIO
+    # ABA 4: CALENDÁRIO (Corrigido ano dinâmico)
     # =========================================================
     elif menu == "📅 CALENDÁRIO":
-        mes_sel = st.sidebar.selectbox("Mês de Visualização", list(calendar.month_name)[1:], index=datetime.now().month-1)
+        mes_sel = st.sidebar.selectbox("Mês", list(calendar.month_name)[1:], index=df_order['Data'].max().month-1)
         m_idx = list(calendar.month_name).index(mes_sel) + 1
-        df_c = df_order[(df_order['Data'].dt.month == m_idx)]
+        ano_analise = df_order['Data'].max().year
+        
+        df_c = df_order[(df_order['Data'].dt.month == m_idx) & (df_order['Data'].dt.year == ano_analise)]
         cal_data = df_c.groupby(df_c['Data'].dt.day).agg({'Run Time':'sum','Horário Padrão':'sum'}).reset_index()
         
-        st.markdown(f"<div class='section-header'>Heatmap de Produção: {mes_sel.upper()}</div>", unsafe_allow_html=True)
+        st.markdown(f"### 📅 Cronograma {mes_sel} {ano_analise}")
         cols = st.columns(7)
-        for i, d in enumerate(['SEG','TER','QUA','QUI','SEX','SÁB','DOM']): 
-            cols[i].markdown(f"<div class='calendar-day-name'>{d}</div>", unsafe_allow_html=True)
+        for i, d in enumerate(['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo']): cols[i].markdown(f"<div class='calendar-day-name'>{d}</div>", unsafe_allow_html=True)
         
-        days = list(calendar.Calendar(0).itermonthdays(datetime.now().year, m_idx))
+        days = list(calendar.Calendar(0).itermonthdays(ano_analise, m_idx))
         html_grid = '<div class="calendar-grid">'
         for d in days:
-            if d == 0: 
-                html_grid += '<div style="background:transparent; border:none;"></div>'
+            if d == 0: html_grid += '<div></div>'
             else:
                 row = cal_data[cal_data['Data']==d]
                 mov = (row['Run Time'].values[0]/row['Horário Padrão'].values[0]*100) if not row.empty and row['Horário Padrão'].values[0]>0 else 0
-                
-                # Gradiente de cor mais suave para o calendário
-                if mov > 85:
-                    cor_bg = "#dcfce7" # Verde bem claro
-                    cor_txt = "#166534"
-                elif mov > 0:
-                    cor_bg = "#fee2e2" # Vermelho bem claro
-                    cor_txt = "#991b1b"
-                else:
-                    cor_bg = "#ffffff"
-                    cor_txt = "#94a3b8"
-                    
-                html_grid += f'<div class="day-card" style="background:{cor_bg}; border-color:{cor_txt}40"><span class="day-number" style="color:{cor_txt}">{d}</span><div class="day-status" style="color:{cor_txt}">{mov:.1f}%</div></div>'
+                cor = "#dcfce7" if mov > 85 else "#fee2e2" if mov > 0 else "#f1f5f9"
+                txt_cor = "#166534" if mov > 85 else "#991b1b" if mov > 0 else "#94a3b8"
+                html_grid += f'<div class="day-card" style="background:{cor};"><span class="day-number" style="color:{txt_cor}">{d}</span><div class="day-status" style="color:{txt_cor}">{mov:.1f}%</div></div>'
         st.markdown(html_grid + '</div>', unsafe_allow_html=True)
 
     # =========================================================
-    # ABA 5: ANÁLISE SEMANAL
+    # ABA 5: ANÁLISE SEMANAL (Intacta)
     # =========================================================
     elif menu == "📋 ANÁLISE SEMANAL":
-        st.sidebar.subheader("Filtros do Relatório")
-        maq_b = st.sidebar.selectbox("Foco na Máquina", sorted(df_order['Máquina'].unique()))
-        turno_b = st.sidebar.multiselect("Turnos", sorted(df_order['Turno'].unique()), default=sorted(df_order['Turno'].unique()))
-        periodo_b = st.sidebar.date_input("Janela de Análise", [df_order['Data'].max() - timedelta(days=7), df_order['Data'].max()])
+        st.sidebar.subheader("Filtros Board")
+        maq_b = st.sidebar.selectbox("Máquina", sorted(df_order['Máquina'].unique()))
+        turno_b = st.sidebar.multiselect("Turnos", sorted(df_order['Turno'].unique()), default=sorted(df_order['Turno'].unique()), key='tb')
+        periodo_b = st.sidebar.date_input("Período", [df_order['Data'].max() - timedelta(days=7), df_order['Data'].max()])
         
         df_b_all = df_order[(df_order['Data'].dt.date >= periodo_b[0]) & (df_order['Data'].dt.date <= periodo_b[1]) & (df_order['Turno'].isin(turno_b))]
         df_b = df_b_all[df_b_all['Máquina'] == maq_b]
         df_sb = df_stops[(df_stops['Data'].dt.date >= periodo_b[0]) & (df_stops['Data'].dt.date <= periodo_b[1]) & 
                          (df_stops['Máquina'] == maq_b) & (df_stops['Turno'].isin(turno_b))]
 
-        str_turnos = ", ".join(turno_b) if turno_b else "Todos"
-        st.markdown(f"""
-            <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 12px; padding: 25px; margin-bottom: 20px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <h2 style="margin:0; font-weight:900; color:white;">RELATÓRIO SEMANAL: MÁQUINA {maq_b}</h2>
-                <div style="margin-top:10px; font-size:1rem; color:#cbd5e1;"><b>Turnos Analisados:</b> {str_turnos} &nbsp;|&nbsp; <b>Período:</b> {periodo_b[0].strftime('%d/%m')} a {periodo_b[1].strftime('%d/%m/%Y')}</div>
-            </div>
-        """, unsafe_allow_html=True)
+        str_turnos = ", ".join(turno_b) if turno_b else "Nenhum"
+        st.markdown(f"""<div style="text-align:center; border-bottom:3px solid #1d4ed8; padding-bottom:10px; margin-bottom:15px;">
+            <h1 style="color:#0f172a; margin:0;">RELATÓRIO SEMANAL DE PERFORMANCE - MÁQUINA {maq_b}</h1>
+            <h3 style="color:#1d4ed8; margin:0;">TURNO(S): {str_turnos}</h3>
+            <p style="color:#64748b; font-size:1rem;">Período: {periodo_b[0].strftime('%d/%m')} a {periodo_b[1].strftime('%d/%m/%Y')}</p></div>""", unsafe_allow_html=True)
 
         m_v = (df_b["Run Time"].sum()/df_b["Horário Padrão"].replace(0,1).sum()*100)
         l_v = ((df_b["Machine Counter"].sum()-df_b["Peças Estoque - Ajuste"].sum())/df_b["Machine Counter"].replace(0,1).sum()*100)
+        pecas_v = df_b["Peças Estoque - Ajuste"].sum()
 
         v1, v2, v3 = st.columns([1, 1, 1])
-        with v1: st.plotly_chart(mini_gauge("Eficiência (Mov)", m_v, "#059669", 85, 180), use_container_width=True)
-        with v2: st.plotly_chart(mini_gauge("Perda (Loss)", l_v, "#e11d48", 5, 180), use_container_width=True)
-        with v3: st.markdown(f'<div class="metric-card" style="height:180px; justify-content:center;"><div class="metric-title">Total Entregue</div><div class="metric-value" style="font-size:2.5rem; color:#1d4ed8;">{df_b["Peças Estoque - Ajuste"].sum():,.0f}</div></div>', unsafe_allow_html=True)
+        with v1: st.plotly_chart(mini_gauge("Movimentação", m_v, "#059669", 85, 180), use_container_width=True)
+        with v2: st.plotly_chart(mini_gauge("Loss", l_v, "#e11d48", 5, 180), use_container_width=True)
+        with v3: st.markdown(f'<div class="metric-card" style="height:150px;"><div class="metric-title">Peças Enviadas</div><div class="metric-value" style="font-size:2.2rem; color:#1d4ed8;">{pecas_v:,.0f}</div></div>', unsafe_allow_html=True)
 
-        st.markdown("<div class='section-header'>Benchmarking e Análise de Falhas</div>", unsafe_allow_html=True)
-        col_rank, col_stops = st.columns([1, 2])
+        rank_df = df_b_all.groupby('Máquina').agg({'Run Time':'sum','Horário Padrão':'sum'}).reset_index()
+        rank_df['Mov %'] = (rank_df['Run Time'] / rank_df['Horário Padrão'].replace(0,1) * 100).round(1)
+        rank_df = rank_df.sort_values('Mov %', ascending=False).reset_index(drop=True)
+        rank_df.index += 1
         
+        check_maq = rank_df[rank_df['Máquina'] == maq_b]
+        if not check_maq.empty:
+            posicao = check_maq.index[0]
+            total_maqs = len(rank_df)
+            if posicao <= 2:
+                msg, cor_msg, bg_msg = f"🌟 EXCELENTE! Máquina {maq_b} no TOP 2 ({posicao}º).", "#064e3b", "#dcfce7"
+            elif posicao > (total_maqs - 2):
+                msg, cor_msg, bg_msg = f"🚨 ATENÇÃO! Máquina {maq_b} na posição {posicao}º. Foco total!", "#9f1239", "#ffe4e6"
+            else:
+                msg, cor_msg, bg_msg = f"📈 BOM TRABALHO! Máquina {maq_b} na posição {posicao}º.", "#1e40af", "#dbeafe"
+            st.markdown(f'<div style="background:{bg_msg}; color:{cor_msg}; padding: 12px; border-radius: 8px; margin-bottom: 10px; text-align: center; font-weight: 700;">{msg}</div>', unsafe_allow_html=True)
+
+        col_rank, col_stops = st.columns([1, 2])
         with col_rank:
-            rank_df = df_b_all.groupby('Máquina').agg({'Run Time':'sum','Horário Padrão':'sum'}).reset_index()
-            rank_df['Mov %'] = (rank_df['Run Time'] / rank_df['Horário Padrão'].replace(0,1) * 100).round(1)
-            rank_df = rank_df.sort_values('Mov %', ascending=False).reset_index(drop=True)
-            rank_df.index += 1
-            st.dataframe(rank_df[['Máquina', 'Mov %']].style.highlight_between(subset='Máquina', left=maq_b, right=maq_b, color='#dbeafe'), use_container_width=True)
+            st.markdown("🏆 **Ranking Mov. (%)**")
+            st.table(rank_df[['Máquina', 'Mov %']])
 
         with col_stops:
+            st.markdown("🛑 **Impacto das Paradas (%)**")
             stop_imp = df_sb.groupby('Problema')['Minutos'].sum().sort_values(ascending=True).tail(5)
             if not stop_imp.empty:
                 pior_parada = stop_imp.index[-1]
+                total_min_p = df_sb['Minutos'].sum()
                 df_p_plot = stop_imp.reset_index()
-                df_p_plot['Label'] = df_p_plot.apply(lambda r: f"{r['Minutos']} min", axis=1)
-                fig_b = px.bar(df_p_plot, x='Minutos', y='Problema', orientation='h', text='Label', color_discrete_sequence=['#fb923c']) # Cor Laranja Alerta
-                fig_b.update_traces(textposition='outside', marker_border_radius=4)
-                st.plotly_chart(apply_corporate_layout(fig_b), use_container_width=True)
-            else: pior_parada = "Sem dados de parada"
+                df_p_plot['%'] = (df_p_plot['Minutos'] / total_min_p * 100).round(1)
+                df_p_plot['Label'] = df_p_plot.apply(lambda r: f"{r['Minutos']} min ({r['%']}%)", axis=1)
+                fig_b = px.bar(df_p_plot, x='Minutos', y='Problema', orientation='h', text='Label', color_discrete_sequence=['#e11d48'])
+                fig_b.update_layout(height=250, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', font={'color':'black'})
+                st.plotly_chart(fig_b, use_container_width=True)
+            else: pior_parada = "Nenhuma parada registrada"
 
         st.markdown(f"""
             <div class="five-why-box">
-                <h4 style="color:#0f172a; margin-top:0;">Investigação de Causa Raiz (5 Porquês): <span style="color:#e11d48;">{pior_parada}</span></h4>
-                <div class="five-why-line"><b>1º Por quê?</b> </div>
-                <div class="five-why-line"><b>2º Por quê?</b> </div>
-                <div class="five-why-line"><b>3º Por quê?</b> </div>
-                <div class="five-why-line"><b>4º Por quê?</b> </div>
-                <div class="five-why-line"><b>5º Por quê?</b> </div>
-                <div style="display:flex; gap:15px; margin-top:20px;">
-                    <div style="flex:1; background:#f8fafc; border:1px solid #cbd5e1; padding:15px; border-radius:8px;"><b>CAUSA RAIZ ENCONTRADA:</b></div>
-                    <div style="flex:2; background:#f0fdf4; border:1px solid #bbf7d0; padding:15px; border-radius:8px;"><b>AÇÃO CORRETIVA / PREVENTIVA:</b></div>
+                <h4 style="color:#0f172a; margin-top:0;">ANÁLISE DE CAUSA RAIZ - 5 PORQUÊS: <span style="color:#e11d48;">{pior_parada}</span></h4>
+                <div class="five-why-line"><b>1º Por que?</b> _________________________________________________________________</div>
+                <div class="five-why-line"><b>2º Por que?</b> _________________________________________________________________</div>
+                <div class="five-why-line"><b>3º Por que?</b> _________________________________________________________________</div>
+                <div class="five-why-line"><b>4º Por que?</b> _________________________________________________________________</div>
+                <div class="five-why-line"><b>5º Por que?</b> _________________________________________________________________</div>
+                <br>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1; border:1px solid #cbd5e1; background:#f8fafc; padding:10px; min-height:80px;"><b>CAUSA RAIZ:</b></div>
+                    <div style="flex:2; border:1px solid #cbd5e1; background:#f8fafc; padding:10px; min-height:80px;"><b>AÇÃO CORRETIVA:</b></div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 else:
-    st.info("💡 Carregue a Base de Produção (.xlsm) e a Base de Metas (.xlsx) no menu lateral para iniciar.")
+    st.info("💡 Carregue o arquivo Excel para iniciar.")
