@@ -13,7 +13,11 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
     * { font-family: 'Inter', sans-serif; }
+    
+    /* Fundo da Aplicação */
     .stApp { background-color: #f8fafc; color: #0f172a; }
+    
+    /* Menu Lateral */
     [data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e2e8f0; }
     [data-testid="stSidebar"] .stRadio div[role="radiogroup"] > label {
         background-color: #ffffff; border: 1px solid transparent;
@@ -24,6 +28,8 @@ st.markdown("""
         background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
         color: white !important; box-shadow: 0 4px 6px -1px rgba(29, 78, 216, 0.2);
     }
+
+    /* Cards de Métricas */
     .metric-container { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
     .metric-card {
         background: #ffffff; padding: 15px; border-radius: 10px;
@@ -33,66 +39,49 @@ st.markdown("""
     }
     .metric-title { color: #64748b; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; }
     .metric-value { color: #0f172a; font-size: 1.5rem; font-weight: 900; line-height: 1.1; }
+
+    /* Estilo de Gaps */
     .gap-text { font-size: 0.75rem; font-weight: 700; margin-top: 5px; }
     .color-red { color: #e11d48; }
     .color-green { color: #059669; }
+
+    /* Headers de Seção */
     .section-header {
         background: #f1f5f9; padding: 10px 15px; border-radius: 6px;
         color: #1e40af; font-weight: 900; text-transform: uppercase;
         margin-top: 25px; margin-bottom: 15px; border-left: 5px solid #1d4ed8; font-size: 1rem;
     }
+
+    /* Calendário */
     .calendar-day-name { text-align: center; font-weight: 800; color: #475569; font-size: 0.85rem; padding-bottom: 5px; }
     .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; width: 100%; }
     .day-card { background: #ffffff; border-radius: 6px; padding: 10px; min-height: 85px; border: 1px solid #e2e8f0; }
     .day-number { font-size: 1rem; font-weight: 900; color: #1e293b; }
     .day-status { font-size: 0.75rem; font-weight: 700; margin-top: 5px; text-align: right; }
+
+    /* 5 Porquês */
     .five-why-box { border: 2px solid #cbd5e1; padding: 20px; background: #ffffff; border-radius: 10px; margin-top: 15px; }
     .five-why-line { border-bottom: 1px dashed #cbd5e1; padding: 10px 0; font-size: 0.9rem; color: #000; }
+    
     h1, h2, h3, p, span, label { color: #000000 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. CARREGAMENTO E LIMPEZA COM DIAGNÓSTICO
+# 2. CARREGAMENTO E LIMPEZA
 @st.cache_data
 def load_data(file_obj):
-    try:
-        df_order = pd.read_excel(file_obj, sheet_name="Result by order")
-        df_stops = pd.read_excel(file_obj, sheet_name="Stop machine item")
-    except Exception as e:
-        st.error(f"❌ Erro ao ler abas do Excel. Certifique-se de que as abas 'Result by order' e 'Stop machine item' existem. Erro: {e}")
-        st.stop()
-
-    # Limpeza de espaços em branco nos nomes das colunas (MUITO IMPORTANTE)
+    df_order = pd.read_excel(file_obj, sheet_name="Result by order")
+    df_stops = pd.read_excel(file_obj, sheet_name="Stop machine item")
     df_order.columns = df_order.columns.str.strip()
     df_stops.columns = df_stops.columns.str.strip()
     
-    # DIAGNÓSTICO DE COLUNAS FALTANTES
-    colunas_necessarias_order = ['Data', 'Máquina', 'Turno', 'Run Time', 'Horário Padrão', 'Machine Counter', 'Peças em Estoque']
-    faltam_order = [col for col in colunas_necessarias_order if col not in df_order.columns]
-    
-    if faltam_order:
-        st.error(f"❌ ERRO: Faltam colunas na aba 'Result by order'.")
-        st.warning(f"O código procurou por: {faltam_order}")
-        st.info(f"Colunas que o Pandas encontrou no seu arquivo: {list(df_order.columns)}")
-        st.stop()
+    nums = ['Run Time', 'Horário Padrão', 'Machine Counter', 'Peças Estoque - Ajuste', 'Average Speed', 'Minutos', 'QTD']
+    for df in [df_order, df_stops]:
+        for col in nums:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-    colunas_necessarias_stops = ['Data', 'Máquina', 'Turno', 'Minutos', 'QTD', 'Problema']
-    faltam_stops = [col for col in colunas_necessarias_stops if col not in df_stops.columns]
-    
-    if faltam_stops:
-        st.error(f"❌ ERRO: Faltam colunas na aba 'Stop machine item'.")
-        st.warning(f"O código procurou por: {faltam_stops}")
-        st.info(f"Colunas que o Pandas encontrou no seu arquivo: {list(df_stops.columns)}")
-        st.stop()
-
-    # Conversão de numéricos
-    for col in ['Run Time', 'Horário Padrão', 'Machine Counter', 'Peças em Estoque']:
-        df_order[col] = pd.to_numeric(df_order[col], errors='coerce').fillna(0)
-        
-    for col in ['Minutos', 'QTD']:
-        df_stops[col] = pd.to_numeric(df_stops[col], errors='coerce').fillna(0)
-
-    # Tratamento de Datas e Textos
+    # Tratamento rigoroso de datas para evitar NaT
     df_order['Data'] = pd.to_datetime(df_order['Data'], errors='coerce')
     df_order = df_order.dropna(subset=['Data'])
     df_order['Máquina'] = df_order['Máquina'].fillna(0).astype(int).astype(str)
@@ -147,6 +136,7 @@ def load_metas_completas(file, data_ref):
     except Exception as e:
         return 0, 0, {}
 
+# Gráfico de Gauge (Velocímetro)
 def mini_gauge(label, value, color, target, height=180):
     fig = go.Figure(go.Indicator(
         mode="gauge+number", value=value,
@@ -165,8 +155,8 @@ def mini_gauge(label, value, color, target, height=180):
 # --- SIDEBAR ---
 with st.sidebar:
     st.markdown("<h1 style='color:#1d4ed8; font-weight:900;'>🏭 ANALYTICS HUB</h1>", unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("📂 Excel Produção (.xlsm)", type=["xlsm", "xlsx"])
-    up_datas = st.file_uploader("📂 Excel DATAS Metas (.xlsx)", type=["xlsx"])
+    uploaded_file = st.file_uploader("📂 Excel Produção (.xlsm)", type=["xlsm"])
+    up_datas = st.file_uploader("📂 Excel DATAS (.xlsx)", type=["xlsx"])
     st.markdown("---")
     if uploaded_file:
         menu = st.radio("NAVEGAÇÃO", ["📋 REPORTE DIÁRIO", "📈 PERFORMANCE", "🛑 TOP 10 PARADAS", "📅 CALENDÁRIO", "📋 ANÁLISE SEMANAL"])
@@ -174,12 +164,13 @@ with st.sidebar:
 if uploaded_file:
     df_order, df_stops = load_data(uploaded_file)
 
+    # Prevenção caso a base venha sem datas válidas
     if df_order.empty:
-        st.error("Nenhuma data válida encontrada no arquivo de produção. Verifique o Excel.")
+        st.error("Nenhuma data válida encontrada no arquivo. Verifique o Excel.")
         st.stop()
 
     # =========================================================
-    # ABA 1: REPORTE DIÁRIO
+    # ABA 1: REPORTE DIÁRIO 
     # =========================================================
     if menu == "📋 REPORTE DIÁRIO":
         st.subheader("⚙️ Filtros da Página")
@@ -193,8 +184,7 @@ if uploaded_file:
         st.markdown(f"## 📋 Reporte Diário de Produção - {data_ref_reporte.strftime('%d/%m/%Y')}")
 
         df_acumulado_mes = df_order[(df_order['Data'].dt.month == data_ref_reporte.month) & (df_order['Data'].dt.year == data_ref_reporte.year) & (df_order['Data'].dt.date <= data_ref_reporte)]
-        
-        estoque_acum_mes = df_acumulado_mes['Peças em Estoque'].sum()
+        estoque_acum_mes = df_acumulado_mes['Peças Estoque - Ajuste'].sum()
         total_mc_mes = df_acumulado_mes['Machine Counter'].sum()
         mov_acum_mes = (df_acumulado_mes['Run Time'].sum() / df_acumulado_mes['Horário Padrão'].sum() * 100) if df_acumulado_mes['Horário Padrão'].sum() > 0 else 0
         loss_acum_mes = ((total_mc_mes - estoque_acum_mes) / total_mc_mes * 100) if total_mc_mes > 0 else 0
@@ -231,12 +221,12 @@ if uploaded_file:
         if up_datas:
             st.markdown(f"<div class='section-header'>🎯 ANÁLISE DE PEÇAS FALTANTES (GAP) - {data_ref_reporte.strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
             df_dia_gap = df_order[df_order['Data'].dt.date == data_ref_reporte]
-            res_gap = df_dia_gap.groupby('Máquina').agg({'Peças em Estoque':'sum'}).reset_index()
+            res_gap = df_dia_gap.groupby('Máquina').agg({'Peças Estoque - Ajuste':'sum'}).reset_index()
             
             gap_data = []
             maquinas_alvo = ["1", "2", "3", "4", "5", "6", "7"]
             for maq in maquinas_alvo:
-                realizado = res_gap.loc[res_gap['Máquina'] == maq, 'Peças em Estoque'].sum() if maq in res_gap['Máquina'].values else 0
+                realizado = res_gap.loc[res_gap['Máquina'] == maq, 'Peças Estoque - Ajuste'].sum() if maq in res_gap['Máquina'].values else 0
                 meta_maq = metas_maq_hoje.get(maq, 0)
                 faltante = meta_maq - realizado
                 status = "✅ Bateu Meta" if faltante <= 0 else f"🚨 Faltam {faltante:,.0f} peças"
@@ -249,18 +239,19 @@ if uploaded_file:
         for dia in dias_sel:
             st.markdown(f"<div class='section-header'>DETALHAMENTO POR MÁQUINA - {dia.strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
             df_dia = df_order[df_order['Data'].dt.date == dia]
-            res = df_dia.groupby(['Categoria', 'Máquina']).agg({'Run Time':'sum','Horário Padrão':'sum','Machine Counter':'sum','Peças em Estoque':'sum'}).reset_index()
+            res = df_dia.groupby(['Categoria', 'Máquina']).agg({'Run Time':'sum','Horário Padrão':'sum','Machine Counter':'sum','Peças Estoque - Ajuste':'sum'}).reset_index()
             res['Movimentação %'] = (res['Run Time'] / res['Horário Padrão'].replace(0,1) * 100).round(1)
-            res['Perda %'] = ((res['Machine Counter'] - res['Peças em Estoque']) / res['Machine Counter'].replace(0,1) * 100).round(1)
-            st.table(res[['Categoria','Máquina','Movimentação %','Perda %','Peças em Estoque']].rename(columns={'Peças em Estoque':'Qtd Estoque'}))
+            res['Perda %'] = ((res['Machine Counter'] - res['Peças Estoque - Ajuste']) / res['Machine Counter'].replace(0,1) * 100).round(1)
+            st.table(res[['Categoria','Máquina','Movimentação %','Perda %','Peças Estoque - Ajuste']].rename(columns={'Peças Estoque - Ajuste':'Qtd Estoque'}))
 
     # =========================================================
-    # ABA 2: PERFORMANCE
+    # ABA 2: PERFORMANCE (Correção da Tupla de Datas)
     # =========================================================
     elif menu == "📈 PERFORMANCE":
         st.sidebar.subheader("Filtros")
         f_data = st.sidebar.date_input("Período", [df_order['Data'].min(), df_order['Data'].max()], key='p1')
         
+        # Tratamento de erro clássico do Streamlit (se o usuário não selecionar a data final ainda)
         if len(f_data) == 2:
             data_ini, data_fim = f_data[0], f_data[1]
         else:
@@ -274,7 +265,7 @@ if uploaded_file:
         st.markdown(f"""
             <div class="metric-container">
                 <div class="metric-card"><div class="metric-title">Machine Counter</div><div class="metric-value">{df_f["Machine Counter"].sum():,.0f}</div></div>
-                <div class="metric-card"><div class="metric-title">Peças Estoque</div><div class="metric-value" style="color:#1d4ed8;">{df_f["Peças em Estoque"].sum():,.0f}</div></div>
+                <div class="metric-card"><div class="metric-title">Peças Estoque</div><div class="metric-value" style="color:#1d4ed8;">{df_f["Peças Estoque - Ajuste"].sum():,.0f}</div></div>
                 <div class="metric-card"><div class="metric-title">Run Time Total</div><div class="metric-value">{df_f["Run Time"].sum():,.0f}m</div></div>
             </div>
         """, unsafe_allow_html=True)
@@ -282,10 +273,10 @@ if uploaded_file:
         col1, col2 = st.columns(2)
         hp_sum = df_f['Horário Padrão'].sum()
         with col1: st.plotly_chart(mini_gauge("Movimentação (%)", (df_f['Run Time'].sum()/hp_sum*100 if hp_sum>0 else 0), "#059669", 90), use_container_width=True)
-        with col2: st.plotly_chart(mini_gauge("Loss (%)", ((df_f['Machine Counter'].sum()-df_f['Peças em Estoque'].sum())/df_f['Machine Counter'].sum()*100 if df_f['Machine Counter'].sum()>0 else 0), "#e11d48", 2.5), use_container_width=True)
+        with col2: st.plotly_chart(mini_gauge("Loss (%)", ((df_f['Machine Counter'].sum()-df_f['Peças Estoque - Ajuste'].sum())/df_f['Machine Counter'].sum()*100 if df_f['Machine Counter'].sum()>0 else 0), "#e11d48", 2.5), use_container_width=True)
 
     # =========================================================
-    # ABA 3: TOP 10 PARADAS
+    # ABA 3: TOP 10 PARADAS (Correção da Tupla de Datas)
     # =========================================================
     elif menu == "🛑 TOP 10 PARADAS":
         f_d_s = st.sidebar.date_input("Período", [df_stops['Data'].min(), df_stops['Data'].max()], key='p2')
@@ -306,22 +297,27 @@ if uploaded_file:
         st.plotly_chart(fig2, use_container_width=True)
 
     # =========================================================
-    # ABA 4: CALENDÁRIO
+    # ABA 4: CALENDÁRIO (Correção Completa: Ano e Valores)
     # =========================================================
     elif menu == "📅 CALENDÁRIO":
+        # Meses manuais para evitar problemas de idioma da máquina
         meses_pt = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
         
+        # Filtro de Ano para não prender no ano máximo e esconder dados passados
         anos_disponiveis = sorted(df_order['Data'].dt.year.dropna().unique().tolist(), reverse=True)
         ano_analise = st.sidebar.selectbox("Ano", anos_disponiveis)
         
+        # Mês padrão dinâmico baseado no ano selecionado
         df_ano = df_order[df_order['Data'].dt.year == ano_analise]
         mes_padrao = df_ano['Data'].dt.month.max() - 1 if not df_ano.empty else 0
         
         mes_sel = st.sidebar.selectbox("Mês", meses_pt, index=int(mes_padrao))
         m_idx = meses_pt.index(mes_sel) + 1
         
+        # Agrupamento seguro pelo dia
         df_c = df_ano[df_ano['Data'].dt.month == m_idx]
         
+        # Cria uma coluna de 'Dia' isolada para agrupar com segurança sem perder o index
         df_c_copia = df_c.copy()
         df_c_copia['Dia'] = df_c_copia['Data'].dt.day
         cal_data = df_c_copia.groupby('Dia').agg({'Run Time':'sum','Horário Padrão':'sum'}).reset_index()
@@ -351,7 +347,7 @@ if uploaded_file:
         st.markdown(html_grid + '</div>', unsafe_allow_html=True)
 
     # =========================================================
-    # ABA 5: ANÁLISE SEMANAL
+    # ABA 5: ANÁLISE SEMANAL (Correção da Tupla de Datas)
     # =========================================================
     elif menu == "📋 ANÁLISE SEMANAL":
         st.sidebar.subheader("Filtros Board")
@@ -376,8 +372,8 @@ if uploaded_file:
             <p style="color:#64748b; font-size:1rem;">Período: {p_ini.strftime('%d/%m')} a {p_fim.strftime('%d/%m/%Y')}</p></div>""", unsafe_allow_html=True)
 
         m_v = (df_b["Run Time"].sum()/df_b["Horário Padrão"].replace(0,1).sum()*100)
-        l_v = ((df_b["Machine Counter"].sum()-df_b["Peças em Estoque"].sum())/df_b["Machine Counter"].replace(0,1).sum()*100)
-        pecas_v = df_b["Peças em Estoque"].sum()
+        l_v = ((df_b["Machine Counter"].sum()-df_b["Peças Estoque - Ajuste"].sum())/df_b["Machine Counter"].replace(0,1).sum()*100)
+        pecas_v = df_b["Peças Estoque - Ajuste"].sum()
 
         v1, v2, v3 = st.columns([1, 1, 1])
         with v1: st.plotly_chart(mini_gauge("Movimentação", m_v, "#059669", 85, 180), use_container_width=True)
